@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Actividad - Tasks Manager</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #1c1e21;
+            margin: 0;
+            padding: 2rem;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+        }
+        #container {
+            width: 100%;
+            max-width: 800px;
+        }
+        #dashboard {
+            background-color: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            backdrop-filter: blur(10px);
+        }
+        h1 {
+            text-align: center;
+            color: #1877f2;
+            margin-top: 0;
+            margin-bottom: 1rem;
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+        .subtitle {
+            text-align: center;
+            color: #606770;
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+        }
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            border: 1px solid #dee2e6;
+        }
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1877f2;
+            margin-bottom: 0.5rem;
+        }
+        .stat-label {
+            color: #6c757d;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+        th, td {
+            padding: 1.2rem;
+            text-align: left;
+            border-bottom: 1px solid #f1f3f4;
+        }
+        th {
+            font-weight: 600;
+            color: #1c1e21;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        td:first-child {
+            font-weight: 600;
+            color: #1c1e21;
+        }
+        td:last-child {
+            font-weight: 600;
+            font-family: "SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", monospace;
+            text-align: right;
+            color: #1877f2;
+        }
+        .category-badge {
+            display: inline-block;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .category-development { background: #e3f2fd; color: #1976d2; }
+        .category-productivity { background: #e8f5e8; color: #388e3c; }
+        .category-entertainment { background: #fff3e0; color: #f57c00; }
+        .category-communication { background: #f3e5f5; color: #7b1fa2; }
+        .category-social { background: #e1f5fe; color: #0277bd; }
+        .category-learning { background: #f1f8e9; color: #689f38; }
+        .category-design { background: #fce4ec; color: #c2185b; }
+        .category-gaming { background: #e8eaf6; color: #3f51b5; }
+        .category-other { background: #f5f5f5; color: #616161; }
+        .loader {
+            text-align: center;
+            padding: 3rem;
+            color: #6c757d;
+            font-size: 1.1rem;
+        }
+        #controls {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+        .button {
+            padding: 1rem 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+        }
+        #pauseButton.paused {
+            background: linear-gradient(135deg, #42b72a 0%, #36a420 100%);
+            color: white;
+        }
+        #pauseButton.running {
+            background: linear-gradient(135deg, #ffc107 0%, #ffb300 100%);
+            color: #212529;
+        }
+        #shutdownButton {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            color: white;
+        }
+        .last-update {
+            text-align: center;
+            color: #6c757d;
+            font-size: 0.9rem;
+            margin-top: 1rem;
+            font-style: italic;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #1877f2 0%, #42b72a 100%);
+            transition: width 0.3s ease;
+        }
+        @media (max-width: 768px) {
+            body { padding: 1rem; }
+            #dashboard { padding: 1.5rem; }
+            .stats-container { grid-template-columns: 1fr; }
+            #controls { flex-direction: column; }
+            .button { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="container">
+        <div id="dashboard">
+            <h1>📊 Dashboard de Actividad</h1>
+            <p class="subtitle">Monitoreo en tiempo real de tu productividad digital</p>
+            
+            <div id="controls">
+                <button id="pauseButton" class="button">Cargando...</button>
+                <button id="shutdownButton" class="button">🔄 Apagar App</button>
+            </div>
+
+            <div class="stats-container" id="stats">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalCategories">-</div>
+                    <div class="stat-label">Categorías Activas</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="totalTime">-</div>
+                    <div class="stat-label">Tiempo Total</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="topCategory">-</div>
+                    <div class="stat-label">Categoría Principal</div>
+                </div>
+            </div>
+
+            <div id="activity-data">
+                <div class="loader">🔄 Cargando datos de actividad...</div>
+            </div>
+
+            <div class="last-update" id="lastUpdate">
+                Última actualización: --
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const activityDataContainer = document.getElementById('activity-data');
+        const pauseButton = document.getElementById('pauseButton');
+        const shutdownButton = document.getElementById('shutdownButton');
+        const statsContainer = document.getElementById('stats');
+        const lastUpdate = document.getElementById('lastUpdate');
+
+        function getCategoryClass(category) {
+            const categoryLower = category.toLowerCase();
+            if (categoryLower.includes('desarrollo') || categoryLower.includes('código')) return 'category-development';
+            if (categoryLower.includes('productividad')) return 'category-productivity';
+            if (categoryLower.includes('entretenimiento')) return 'category-entertainment';
+            if (categoryLower.includes('comunicación')) return 'category-communication';
+            if (categoryLower.includes('social')) return 'category-social';
+            if (categoryLower.includes('aprendizaje')) return 'category-learning';
+            if (categoryLower.includes('diseño')) return 'category-design';
+            if (categoryLower.includes('juegos')) return 'category-gaming';
+            return 'category-other';
+        }
+
+        function formatTime(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function parseTimeString(timeStr) {
+            const parts = timeStr.split(':').map(Number);
+            return parts[0] * 3600 + parts[1] * 60 + parts[2];
+        }
+
+        async function fetchData() {
+            try {
+                const response = await fetch('/data');
+                if (!response.ok) {
+                    activityDataContainer.innerHTML = `<div class="loader">❌ Error al cargar los datos.</div>`;
+                    return;
+                }
+                const data = await response.json();
+                renderData(data);
+                updateStats(data);
+                lastUpdate.textContent = `Última actualización: ${new Date().toLocaleTimeString()}`;
+            } catch (error) {
+                console.error("Error fetching data:", error);
+                activityDataContainer.innerHTML = `<div class="loader">❌ No se pudo conectar al servidor.</div>`;
+            }
+        }
+
+        function updateStats(data) {
+            if (data.length === 0) return;
+
+            const totalCategories = data.length;
+            const totalSeconds = data.reduce((sum, item) => sum + parseTimeString(item.time_str), 0);
+            const topCategory = data[0].category;
+
+            document.getElementById('totalCategories').textContent = totalCategories;
+            document.getElementById('totalTime').textContent = formatTime(totalSeconds);
+            document.getElementById('topCategory').textContent = topCategory.split(' - ')[0] || topCategory;
+        }
+
+        async function fetchStatus() {
+            try {
+                const response = await fetch('/status');
+                const data = await response.json();
+                updateButton(data.is_paused);
+            } catch (error) {
+                console.error("Error fetching status:", error);
+            }
+        }
+
+        async function togglePause() {
+            try {
+                const response = await fetch('/toggle_pause', { method: 'POST' });
+                const data = await response.json();
+                updateButton(data.is_paused);
+            } catch (error) {
+                console.error("Error toggling pause:", error);
+            }
+        }
+
+        async function shutdownApp() {
+            if (confirm("¿Estás seguro de que quieres detener la aplicación? El seguimiento se detendrá por completo.")) {
+                try {
+                    shutdownButton.textContent = '🔄 Apagando...';
+                    shutdownButton.disabled = true;
+                    await fetch('/shutdown', { method: 'POST' });
+                    document.body.innerHTML = `
+                        <div style="text-align: center; padding: 4rem; color: white;">
+                            <h1>✅ Aplicación detenida</h1>
+                            <p>El seguimiento de actividad se ha detenido completamente.</p>
+                            <p>Puedes cerrar esta pestaña.</p>
+                        </div>
+                    `;
+                    clearInterval(dataInterval);
+                    clearInterval(statusInterval);
+                } catch (error) {
+                    console.error("Error shutting down:", error);
+                    alert("No se pudo apagar el servidor. Es posible que necesites cerrarlo manualmente desde la terminal.");
+                    shutdownButton.textContent = '🔄 Apagar App';
+                    shutdownButton.disabled = false;
+                }
+            }
+        }
+
+        function updateButton(is_paused) {
+            if (is_paused) {
+                pauseButton.textContent = '▶️ Reanudar';
+                pauseButton.className = 'button paused';
+            } else {
+                pauseButton.textContent = '⏸️ Pausar';
+                pauseButton.className = 'button running';
+            }
+        }
+
+        function renderData(data) {
+            if (data.length === 0) {
+                activityDataContainer.innerHTML = `<div class="loader">📝 Aún no hay datos registrados. Comienza a usar tu computadora para ver tu actividad.</div>`;
+                return;
+            }
+
+            const totalSeconds = data.reduce((sum, item) => sum + parseTimeString(item.time_str), 0);
+            
+            const table = document.createElement('table');
+            table.innerHTML = `
+                <thead>
+                    <tr>
+                        <th>Categoría de Actividad</th>
+                        <th>Tiempo Total</th>
+                        <th>Porcentaje</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${data.map(item => {
+                        const itemSeconds = parseTimeString(item.time_str);
+                        const percentage = totalSeconds > 0 ? ((itemSeconds / totalSeconds) * 100).toFixed(1) : 0;
+                        const categoryClass = getCategoryClass(item.category);
+                        
+                        return `
+                            <tr>
+                                <td>
+                                    <span class="category-badge ${categoryClass}">${escapeHTML(item.category)}</span>
+                                </td>
+                                <td>${escapeHTML(item.time_str)}</td>
+                                <td>
+                                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                        <span>${percentage}%</span>
+                                        <div class="progress-bar">
+                                            <div class="progress-fill" style="width: ${percentage}%"></div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+            `;
+            activityDataContainer.innerHTML = '';
+            activityDataContainer.appendChild(table);
+        }
+
+        function escapeHTML(str) {
+            return str.replace(/[&<>"'/]/g, s => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '/': '&#x2F;' }[s]));
+        }
+
+        // Event Listeners
+        pauseButton.addEventListener('click', togglePause);
+        shutdownButton.addEventListener('click', shutdownApp);
+
+        // Carga inicial y actualización periódica
+        const dataInterval = setInterval(fetchData, 2000);
+        const statusInterval = setInterval(fetchStatus, 2000);
+
+        fetchData();
+        fetchStatus();
+    </script>
+
+</body>
+</html>
