@@ -1,241 +1,752 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard de Actividad - Tasks Manager</title>
+    <title>Digital Activity Tracker - Dashboard</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: #1c1e21;
+        * {
             margin: 0;
-            padding: 2rem;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #1a1a1a;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .dashboard-container {
             display: flex;
-            justify-content: center;
-            align-items: flex-start;
             min-height: 100vh;
         }
-        #container {
-            width: 100%;
-            max-width: 800px;
-        }
-        #dashboard {
-            background-color: #ffffff;
-            border-radius: 16px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            padding: 2rem;
+
+        /* Sidebar */
+        .sidebar {
+            width: 80px;
+            background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem 0;
+            position: fixed;
+            height: 100vh;
+            z-index: 1000;
         }
-        h1 {
-            text-align: center;
-            color: #1877f2;
-            margin-top: 0;
+
+        .logo {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+        }
+
+        .nav-item {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(255, 255, 255, 0.7);
             margin-bottom: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .nav-item.active::after {
+            content: '';
+            position: absolute;
+            right: -15px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 4px;
+            height: 20px;
+            background: white;
+            border-radius: 2px;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            margin-left: 80px;
+            padding: 2rem;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(180deg); }
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .welcome-text {
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            opacity: 0.9;
+        }
+
+        .dashboard-title {
             font-size: 2.5rem;
             font-weight: 700;
+            margin-bottom: 1rem;
         }
-        .subtitle {
-            text-align: center;
-            color: #606770;
-            margin-bottom: 2rem;
-            font-size: 1.1rem;
-        }
-        .stats-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
+
+        .dashboard-subtitle {
+            font-size: 1rem;
+            opacity: 0.8;
             margin-bottom: 2rem;
         }
-        .stat-card {
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+
+        .status-indicators {
+            display: flex;
+            gap: 1.5rem;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: rgba(255, 255, 255, 0.1);
             border-radius: 12px;
-            padding: 1.5rem;
-            text-align: center;
-            border: 1px solid #dee2e6;
+            backdrop-filter: blur(10px);
         }
-        .stat-number {
+
+        .status-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+        }
+
+        /* Connection Status */
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            margin-bottom: 1rem;
+        }
+
+        .connection-status.connected {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+        }
+
+        .connection-status.disconnected {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        .connection-status.connecting {
+            background: rgba(245, 158, 11, 0.2);
+            color: #f59e0b;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 20px;
+            padding: 1.5rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .stat-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+
+        .stat-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: white;
+        }
+
+        .stat-value {
             font-size: 2rem;
             font-weight: 700;
-            color: #1877f2;
+            color: #1a1a1a;
             margin-bottom: 0.5rem;
         }
-        .stat-label {
-            color: #6c757d;
+
+        .stat-change {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
             font-size: 0.9rem;
             font-weight: 500;
         }
-        table {
+
+        .stat-change.positive {
+            color: #10b981;
+        }
+
+        .stat-change.negative {
+            color: #ef4444;
+        }
+
+        /* Activity Section */
+        .activity-section {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* Activity Table */
+        .activity-table {
             width: 100%;
             border-collapse: collapse;
-            background: white;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
         }
-        th, td {
-            padding: 1.2rem;
+
+        .activity-table th {
             text-align: left;
-            border-bottom: 1px solid #f1f3f4;
-        }
-        th {
+            padding: 1rem;
             font-weight: 600;
-            color: #1c1e21;
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            font-size: 0.95rem;
+            color: #6b7280;
+            border-bottom: 2px solid #f3f4f6;
+            font-size: 0.9rem;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
-        td:first-child {
-            font-weight: 600;
-            color: #1c1e21;
+
+        .activity-table td {
+            padding: 1rem;
+            border-bottom: 1px solid #f3f4f6;
+            vertical-align: middle;
         }
-        td:last-child {
-            font-weight: 600;
-            font-family: "SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", monospace;
-            text-align: right;
-            color: #1877f2;
+
+        .activity-table tr:hover {
+            background: #f9fafb;
         }
+
         .category-badge {
-            display: inline-block;
-            padding: 0.3rem 0.8rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
             border-radius: 20px;
             font-size: 0.8rem;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
-        .category-development { background: #e3f2fd; color: #1976d2; }
-        .category-productivity { background: #e8f5e8; color: #388e3c; }
-        .category-entertainment { background: #fff3e0; color: #f57c00; }
-        .category-communication { background: #f3e5f5; color: #7b1fa2; }
-        .category-social { background: #e1f5fe; color: #0277bd; }
-        .category-learning { background: #f1f8e9; color: #689f38; }
-        .category-design { background: #fce4ec; color: #c2185b; }
-        .category-gaming { background: #e8eaf6; color: #3f51b5; }
-        .category-other { background: #f5f5f5; color: #616161; }
-        .loader {
-            text-align: center;
-            padding: 3rem;
-            color: #6c757d;
-            font-size: 1.1rem;
-        }
-        #controls {
-            display: flex;
-            justify-content: center;
-            gap: 1rem;
-            margin-bottom: 2rem;
-            flex-wrap: wrap;
-        }
-        .button {
-            padding: 1rem 2rem;
-            font-size: 1rem;
+
+        .category-development { background: #dbeafe; color: #1e40af; }
+        .category-productivity { background: #dcfce7; color: #166534; }
+        .category-entertainment { background: #fef3c7; color: #92400e; }
+        .category-communication { background: #f3e8ff; color: #7c3aed; }
+        .category-social { background: #e0f2fe; color: #0369a1; }
+        .category-learning { background: #f0fdf4; color: #15803d; }
+        .category-design { background: #fce7f3; color: #be185d; }
+        .category-gaming { background: #eef2ff; color: #3730a3; }
+        .category-other { background: #f3f4f6; color: #374151; }
+
+        .time-display {
+            font-family: 'SF Mono', 'Fira Code', monospace;
             font-weight: 600;
-            border: none;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            color: #667eea;
         }
-        .button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+
+        .progress-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
         }
-        #pauseButton.paused {
-            background: linear-gradient(135deg, #42b72a 0%, #36a420 100%);
-            color: white;
-        }
-        #pauseButton.running {
-            background: linear-gradient(135deg, #ffc107 0%, #ffb300 100%);
-            color: #212529;
-        }
-        #shutdownButton {
-            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
-            color: white;
-        }
-        .last-update {
-            text-align: center;
-            color: #6c757d;
-            font-size: 0.9rem;
-            margin-top: 1rem;
-            font-style: italic;
-        }
+
         .progress-bar {
-            width: 100%;
+            flex: 1;
             height: 8px;
-            background: #e9ecef;
+            background: #e5e7eb;
             border-radius: 4px;
             overflow: hidden;
-            margin-top: 0.5rem;
         }
+
         .progress-fill {
             height: 100%;
-            background: linear-gradient(90deg, #1877f2 0%, #42b72a 100%);
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border-radius: 4px;
             transition: width 0.3s ease;
         }
+
+        .percentage {
+            font-weight: 600;
+            color: #1a1a1a;
+            min-width: 50px;
+        }
+
+        /* Loading States */
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: #6b7280;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f4f6;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Server Status */
+        .server-status {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .server-status-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .server-status-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #10b981;
+        }
+
+        .status-dot.warning {
+            background: #f59e0b;
+        }
+
+        .status-dot.error {
+            background: #ef4444;
+        }
+
+        /* Responsive Design */
         @media (max-width: 768px) {
-            body { padding: 1rem; }
-            #dashboard { padding: 1.5rem; }
-            .stats-container { grid-template-columns: 1fr; }
-            #controls { flex-direction: column; }
-            .button { width: 100%; }
+            .sidebar {
+                width: 60px;
+            }
+            
+            .main-content {
+                margin-left: 60px;
+                padding: 1rem;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header {
+                padding: 1.5rem;
+            }
+            
+            .dashboard-title {
+                font-size: 2rem;
+            }
+            
+            .status-indicators {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .controls {
+                flex-direction: column;
+            }
+        }
+
+        /* Animations */
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        /* Real-time indicator */
+        .realtime-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(16, 185, 129, 0.9);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            z-index: 1001;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .realtime-indicator.offline {
+            background: rgba(239, 68, 68, 0.9);
+        }
+
+        .realtime-indicator.connecting {
+            background: rgba(245, 158, 11, 0.9);
         }
     </style>
 </head>
 <body>
+    <!-- Real-time Connection Indicator -->
+    <div id="realtimeIndicator" class="realtime-indicator connecting">
+        <i class="fas fa-circle"></i>
+        <span>Connecting...</span>
+    </div>
 
-    <div id="container">
-        <div id="dashboard">
-            <h1>📊 Dashboard de Actividad</h1>
-            <p class="subtitle">Monitoreo en tiempo real de tu productividad digital</p>
-            
-            <div id="controls">
-                <button id="pauseButton" class="button">Cargando...</button>
-                <button id="shutdownButton" class="button">🔄 Apagar App</button>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="logo">DT</div>
+            <div class="nav-item active" title="Dashboard">
+                <i class="fas fa-chart-line"></i>
+            </div>
+            <div class="nav-item" title="Reports">
+                <i class="fas fa-file-alt"></i>
+            </div>
+            <div class="nav-item" title="Settings">
+                <i class="fas fa-cog"></i>
+            </div>
+            <div class="nav-item" title="Analytics">
+                <i class="fas fa-chart-bar"></i>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Header -->
+            <div class="header">
+                <div class="header-content">
+                    <div class="welcome-text">Hi there! 👋</div>
+                    <div class="dashboard-title">Digital Activity Tracker</div>
+                    <div class="dashboard-subtitle">Monitor your productivity patterns in real-time</div>
+                    
+                    <!-- Server Status -->
+                    <div class="server-status">
+                        <div class="server-status-item">
+                            <div class="status-dot" id="serverStatus"></div>
+                            <span id="serverStatusText">Checking server status...</span>
+                        </div>
+                        <div class="server-status-item">
+                            <div class="status-dot" id="trackingStatus"></div>
+                            <span id="trackingStatusText">Initializing tracking...</span>
+                        </div>
+                        <div class="server-status-item">
+                            <div class="status-dot" id="dataStatus"></div>
+                            <span id="dataStatusText">Waiting for activity data...</span>
+                        </div>
+                    </div>
+                    
+                    <div class="status-indicators">
+                        <div class="status-item">
+                            <div class="status-icon" id="trackingIcon">
+                                <i class="fas fa-circle"></i>
+                            </div>
+                            <span id="trackingText">Initializing...</span>
+                        </div>
+                        <div class="status-item">
+                            <div class="status-icon">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <span id="lastUpdate">Last update: --</span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <div class="stats-container" id="stats">
-                <div class="stat-card">
-                    <div class="stat-number" id="totalCategories">-</div>
-                    <div class="stat-label">Categorías Activas</div>
+            <!-- Stats Grid -->
+            <div class="stats-grid">
+                <div class="stat-card fade-in">
+                    <div class="stat-header">
+                        <div class="stat-title">Active Categories</div>
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                            <i class="fas fa-layer-group"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value" id="totalCategories">-</div>
+                    <div class="stat-change positive">
+                        <i class="fas fa-arrow-up"></i>
+                        <span>Real-time tracking</span>
+                    </div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-number" id="totalTime">-</div>
-                    <div class="stat-label">Tiempo Total</div>
+
+                <div class="stat-card fade-in">
+                    <div class="stat-header">
+                        <div class="stat-title">Total Time</div>
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value" id="totalTime">-</div>
+                    <div class="stat-change positive">
+                        <i class="fas fa-arrow-up"></i>
+                        <span>Accumulating</span>
+                    </div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-number" id="topCategory">-</div>
-                    <div class="stat-label">Categoría Principal</div>
+
+                <div class="stat-card fade-in">
+                    <div class="stat-header">
+                        <div class="stat-title">Top Category</div>
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                            <i class="fas fa-trophy"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value" id="topCategory">-</div>
+                    <div class="stat-change positive">
+                        <i class="fas fa-star"></i>
+                        <span>Most active</span>
+                    </div>
                 </div>
             </div>
 
-            <div id="activity-data">
-                <div class="loader">🔄 Cargando datos de actividad...</div>
-            </div>
+            <!-- Activity Section -->
+            <div class="activity-section fade-in">
+                <div class="section-header">
+                    <div class="section-title">Activity Breakdown</div>
+                    <div class="controls">
+                        <button id="pauseButton" class="btn btn-warning" disabled>
+                            <i class="fas fa-pause"></i>
+                            <span>Pause</span>
+                        </button>
+                        <button id="shutdownButton" class="btn btn-danger" disabled>
+                            <i class="fas fa-power-off"></i>
+                            <span>Shutdown</span>
+                        </button>
+                    </div>
+                </div>
 
-            <div class="last-update" id="lastUpdate">
-                Última actualización: --
+                <div id="activity-data">
+                    <div class="loading">
+                        <div class="loading-spinner"></div>
+                        <div>Initializing Digital Activity Tracker...</div>
+                        <div style="font-size: 0.9rem; opacity: 0.7; margin-top: 0.5rem;">
+                            Backend server is running, establishing real-time connection...
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
+        // Socket.IO connection
+        const socket = io();
+        
+        // DOM elements
         const activityDataContainer = document.getElementById('activity-data');
         const pauseButton = document.getElementById('pauseButton');
         const shutdownButton = document.getElementById('shutdownButton');
-        const statsContainer = document.getElementById('stats');
-        const lastUpdate = document.getElementById('lastUpdate');
+        const trackingStatus = document.getElementById('trackingStatus');
+        const trackingText = document.getElementById('trackingText');
+        const lastUpdateElement = document.getElementById('lastUpdate');
+        const realtimeIndicator = document.getElementById('realtimeIndicator');
+        
+        // Server status elements
+        const serverStatus = document.getElementById('serverStatus');
+        const serverStatusText = document.getElementById('serverStatusText');
+        const trackingStatusDot = document.getElementById('trackingStatus');
+        const trackingStatusText = document.getElementById('trackingStatusText');
+        const dataStatus = document.getElementById('dataStatus');
+        const dataStatusText = document.getElementById('dataStatusText');
 
+        // Connection state
+        let isConnected = false;
+        let hasReceivedData = false;
+
+        // Update server status indicators
+        function updateServerStatus(status, text, element, textElement) {
+            element.className = `status-dot ${status}`;
+            textElement.textContent = text;
+        }
+
+        // Utility functions
         function getCategoryClass(category) {
             const categoryLower = category.toLowerCase();
-            if (categoryLower.includes('desarrollo') || categoryLower.includes('código')) return 'category-development';
-            if (categoryLower.includes('productividad')) return 'category-productivity';
-            if (categoryLower.includes('entretenimiento')) return 'category-entertainment';
-            if (categoryLower.includes('comunicación')) return 'category-communication';
+            if (categoryLower.includes('development') || categoryLower.includes('código')) return 'category-development';
+            if (categoryLower.includes('productivity')) return 'category-productivity';
+            if (categoryLower.includes('entertainment')) return 'category-entertainment';
+            if (categoryLower.includes('communication')) return 'category-communication';
             if (categoryLower.includes('social')) return 'category-social';
-            if (categoryLower.includes('aprendizaje')) return 'category-learning';
-            if (categoryLower.includes('diseño')) return 'category-design';
-            if (categoryLower.includes('juegos')) return 'category-gaming';
+            if (categoryLower.includes('learning')) return 'category-learning';
+            if (categoryLower.includes('design')) return 'category-design';
+            if (categoryLower.includes('gaming')) return 'category-gaming';
             return 'category-other';
         }
 
@@ -251,23 +762,6 @@
             return parts[0] * 3600 + parts[1] * 60 + parts[2];
         }
 
-        async function fetchData() {
-            try {
-                const response = await fetch('/data');
-                if (!response.ok) {
-                    activityDataContainer.innerHTML = `<div class="loader">❌ Error al cargar los datos.</div>`;
-                    return;
-                }
-                const data = await response.json();
-                renderData(data);
-                updateStats(data);
-                lastUpdate.textContent = `Última actualización: ${new Date().toLocaleTimeString()}`;
-            } catch (error) {
-                console.error("Error fetching data:", error);
-                activityDataContainer.innerHTML = `<div class="loader">❌ No se pudo conectar al servidor.</div>`;
-            }
-        }
-
         function updateStats(data) {
             if (data.length === 0) return;
 
@@ -280,75 +774,66 @@
             document.getElementById('topCategory').textContent = topCategory.split(' - ')[0] || topCategory;
         }
 
-        async function fetchStatus() {
-            try {
-                const response = await fetch('/status');
-                const data = await response.json();
-                updateButton(data.is_paused);
-            } catch (error) {
-                console.error("Error fetching status:", error);
-            }
-        }
-
-        async function togglePause() {
-            try {
-                const response = await fetch('/toggle_pause', { method: 'POST' });
-                const data = await response.json();
-                updateButton(data.is_paused);
-            } catch (error) {
-                console.error("Error toggling pause:", error);
-            }
-        }
-
-        async function shutdownApp() {
-            if (confirm("¿Estás seguro de que quieres detener la aplicación? El seguimiento se detendrá por completo.")) {
-                try {
-                    shutdownButton.textContent = '🔄 Apagando...';
-                    shutdownButton.disabled = true;
-                    await fetch('/shutdown', { method: 'POST' });
-                    document.body.innerHTML = `
-                        <div style="text-align: center; padding: 4rem; color: white;">
-                            <h1>✅ Aplicación detenida</h1>
-                            <p>El seguimiento de actividad se ha detenido completamente.</p>
-                            <p>Puedes cerrar esta pestaña.</p>
-                        </div>
-                    `;
-                    clearInterval(dataInterval);
-                    clearInterval(statusInterval);
-                } catch (error) {
-                    console.error("Error shutting down:", error);
-                    alert("No se pudo apagar el servidor. Es posible que necesites cerrarlo manualmente desde la terminal.");
-                    shutdownButton.textContent = '🔄 Apagar App';
-                    shutdownButton.disabled = false;
-                }
-            }
-        }
-
-        function updateButton(is_paused) {
-            if (is_paused) {
-                pauseButton.textContent = '▶️ Reanudar';
-                pauseButton.className = 'button paused';
+        function updateTrackingStatus(isPaused) {
+            if (isPaused) {
+                trackingStatus.innerHTML = '<i class="fas fa-circle" style="color: #f59e0b;"></i>';
+                trackingText.textContent = 'Tracking Paused';
+                trackingStatus.classList.add('pulse');
+                updateServerStatus('warning', 'Tracking paused', trackingStatusDot, trackingStatusText);
             } else {
-                pauseButton.textContent = '⏸️ Pausar';
-                pauseButton.className = 'button running';
+                trackingStatus.innerHTML = '<i class="fas fa-circle" style="color: #10b981;"></i>';
+                trackingText.textContent = 'Tracking Active';
+                trackingStatus.classList.remove('pulse');
+                updateServerStatus('', 'Tracking active', trackingStatusDot, trackingStatusText);
+            }
+        }
+
+        function updateConnectionStatus(connected) {
+            isConnected = connected;
+            if (connected) {
+                realtimeIndicator.innerHTML = '<i class="fas fa-circle"></i><span>Real-time Connected</span>';
+                realtimeIndicator.className = 'realtime-indicator';
+                updateServerStatus('', 'Server connected', serverStatus, serverStatusText);
+            } else {
+                realtimeIndicator.innerHTML = '<i class="fas fa-circle"></i><span>Offline</span>';
+                realtimeIndicator.className = 'realtime-indicator offline';
+                updateServerStatus('error', 'Server disconnected', serverStatus, serverStatusText);
+            }
+        }
+
+        function updateButton(isPaused) {
+            if (isPaused) {
+                pauseButton.innerHTML = '<i class="fas fa-play"></i><span>Resume</span>';
+                pauseButton.className = 'btn btn-primary';
+            } else {
+                pauseButton.innerHTML = '<i class="fas fa-pause"></i><span>Pause</span>';
+                pauseButton.className = 'btn btn-warning';
             }
         }
 
         function renderData(data) {
             if (data.length === 0) {
-                activityDataContainer.innerHTML = `<div class="loader">📝 Aún no hay datos registrados. Comienza a usar tu computadora para ver tu actividad.</div>`;
+                activityDataContainer.innerHTML = `
+                    <div class="loading">
+                        <i class="fas fa-chart-line" style="font-size: 2rem; color: #6b7280; margin-bottom: 1rem;"></i>
+                        <div>No activity data yet</div>
+                        <div style="font-size: 0.9rem; opacity: 0.7; margin-top: 0.5rem;">Start using your computer to see activity data</div>
+                    </div>
+                `;
+                updateServerStatus('warning', 'No activity data yet', dataStatus, dataStatusText);
                 return;
             }
 
             const totalSeconds = data.reduce((sum, item) => sum + parseTimeString(item.time_str), 0);
             
             const table = document.createElement('table');
+            table.className = 'activity-table';
             table.innerHTML = `
                 <thead>
                     <tr>
-                        <th>Categoría de Actividad</th>
-                        <th>Tiempo Total</th>
-                        <th>Porcentaje</th>
+                        <th>Activity Category</th>
+                        <th>Time Spent</th>
+                        <th>Percentage</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -360,12 +845,15 @@
                         return `
                             <tr>
                                 <td>
-                                    <span class="category-badge ${categoryClass}">${escapeHTML(item.category)}</span>
+                                    <span class="category-badge ${categoryClass}">
+                                        <i class="fas fa-circle"></i>
+                                        ${escapeHTML(item.category)}
+                                    </span>
                                 </td>
-                                <td>${escapeHTML(item.time_str)}</td>
+                                <td class="time-display">${escapeHTML(item.time_str)}</td>
                                 <td>
-                                    <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                        <span>${percentage}%</span>
+                                    <div class="progress-container">
+                                        <span class="percentage">${percentage}%</span>
                                         <div class="progress-bar">
                                             <div class="progress-fill" style="width: ${percentage}%"></div>
                                         </div>
@@ -378,23 +866,132 @@
             `;
             activityDataContainer.innerHTML = '';
             activityDataContainer.appendChild(table);
+            
+            updateServerStatus('', `${data.length} categories tracked`, dataStatus, dataStatusText);
         }
 
         function escapeHTML(str) {
             return str.replace(/[&<>"'/]/g, s => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '/': '&#x2F;' }[s]));
         }
 
-        // Event Listeners
-        pauseButton.addEventListener('click', togglePause);
-        shutdownButton.addEventListener('click', shutdownApp);
+        // Socket.IO Event Handlers
+        socket.on('connect', () => {
+            console.log('🔗 Connected to server');
+            updateConnectionStatus(true);
+            activityDataContainer.innerHTML = `
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <div>Loading initial data...</div>
+                    <div style="font-size: 0.9rem; opacity: 0.7; margin-top: 0.5rem;">
+                        Connected to backend, waiting for activity data...
+                    </div>
+                </div>
+            `;
+        });
 
-        // Carga inicial y actualización periódica
-        const dataInterval = setInterval(fetchData, 2000);
-        const statusInterval = setInterval(fetchStatus, 2000);
+        socket.on('disconnect', () => {
+            console.log('🔌 Disconnected from server');
+            updateConnectionStatus(false);
+            activityDataContainer.innerHTML = `
+                <div class="loading">
+                    <i class="fas fa-wifi" style="font-size: 2rem; color: #ef4444; margin-bottom: 1rem;"></i>
+                    <div>Connection lost</div>
+                    <div style="font-size: 0.9rem; opacity: 0.7; margin-top: 0.5rem;">Attempting to reconnect...</div>
+                </div>
+            `;
+        });
 
-        fetchData();
-        fetchStatus();
+        socket.on('connect_error', (error) => {
+            console.error('❌ Connection error:', error);
+            updateConnectionStatus(false);
+        });
+
+        socket.on('activity_update', (data) => {
+            console.log('📊 Received real-time update:', data);
+            
+            if (data.data) {
+                renderData(data.data);
+                updateStats(data.data);
+                hasReceivedData = true;
+            }
+            
+            if (data.status) {
+                updateTrackingStatus(data.status.is_paused);
+                updateButton(data.status.is_paused);
+            }
+            
+            if (data.timestamp) {
+                lastUpdateElement.textContent = `Last update: ${new Date(data.timestamp).toLocaleTimeString()}`;
+            }
+            
+            // Enable buttons after first data
+            if (hasReceivedData) {
+                pauseButton.disabled = false;
+                shutdownButton.disabled = false;
+            }
+        });
+
+        socket.on('pause_toggled', (data) => {
+            console.log('⏸️ Pause toggled:', data);
+            updateTrackingStatus(data.is_paused);
+            updateButton(data.is_paused);
+        });
+
+        socket.on('shutdown_notification', (data) => {
+            console.log('🛑 Shutdown notification:', data);
+            document.body.innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: center; height: 100vh; color: white; text-align: center;">
+                    <div>
+                        <i class="fas fa-check-circle" style="font-size: 4rem; margin-bottom: 2rem; color: #10b981;"></i>
+                        <h1 style="font-size: 2rem; margin-bottom: 1rem;">Application Stopped</h1>
+                        <p style="font-size: 1.1rem; opacity: 0.8;">Activity tracking has been completely stopped.</p>
+                        <p style="font-size: 0.9rem; opacity: 0.6; margin-top: 1rem;">You can close this tab.</p>
+                    </div>
+                </div>
+            `;
+        });
+
+        // Event listeners
+        pauseButton.addEventListener('click', () => {
+            if (isConnected) {
+                socket.emit('toggle_pause');
+            } else {
+                alert('Not connected to server. Please refresh the page.');
+            }
+        });
+
+        shutdownButton.addEventListener('click', () => {
+            if (confirm("Are you sure you want to stop the application? Tracking will be completely stopped.")) {
+                if (isConnected) {
+                    shutdownButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Shutting down...</span>';
+                    shutdownButton.disabled = true;
+                    socket.emit('request_shutdown');
+                } else {
+                    alert('Not connected to server. Please refresh the page.');
+                    shutdownButton.disabled = false;
+                }
+            }
+        });
+
+        // Navigation
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', function() {
+                document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // Initialize connection status
+        updateConnectionStatus(false);
+        
+        // Check server status on load
+        setTimeout(() => {
+            if (!isConnected) {
+                updateServerStatus('error', 'Server not responding', serverStatus, serverStatusText);
+                updateServerStatus('error', 'Cannot connect', trackingStatusDot, trackingStatusText);
+                updateServerStatus('error', 'No data available', dataStatus, dataStatusText);
+            }
+        }, 5000);
     </script>
-
 </body>
 </html>
